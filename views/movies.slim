@@ -1,0 +1,10 @@
+h1 all movies
+
+ul
+  - movies.each do |movie|
+    li 
+      a href="movies/#{movie['movieid']}" #{movie["moviename"]}
+      a href="movies/#{movie['movieid']}/edit" Uppdatera
+      
+      form method="POST" action="movies/#{movie['movieid']}/delete"
+        input type="submit" Value="Delete"
