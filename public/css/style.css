@@ -1,0 +1,16 @@
+#moviesection {
+    width: 100vw;
+    background-color: aqua;
+    height: 2000px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.movietile {
+    width: 20vw;
+    background-color: rgb(0, 191, 255);
+    height: 30vw;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
