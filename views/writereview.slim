@@ -1,0 +1,15 @@
+h2 write review for #{reviewedmovie[0]['moviename']}
+form action="submitreview/#{reviewedmovie[0]['movieid']}" method="POST"
+    input type="text" name="title" placeholder="Your reviewtitle here"
+    input type="text" name="reviewtext" placeholder="write here"
+    input type="radio" name="rating" value="1"
+    label for="1" 1 Star
+    input type="radio" name="rating" value="2"
+    label for="css" 2 Stars
+    input type="radio" name="rating" value="3"
+    label for="javascript" 3 Stars
+    input type="radio" name="rating" value="4"
+    label for="javascript" 4 Stars
+    input type="radio" name="rating" value="5"
+    label for="javascript" 5 Stars
+    input type="submit" value="Publish review"

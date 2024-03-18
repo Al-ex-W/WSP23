@@ -10,5 +10,8 @@ html lang="en"
             a href="/myprofile" My Profile
             a href="/" Movies
             a href="/reviews" Reviews
-        
+            - if session[:currentuser] != nil
+                a href="user/#{session[:currentuser]}" #{session[:currentuser]}
+            - else
+                a href="login" Log in
         == yield
