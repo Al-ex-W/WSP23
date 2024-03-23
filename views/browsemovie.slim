@@ -1,0 +1,16 @@
+h2 = selectedmovie[0]['moviename']
+p = "Release date: #{selectedmovie[0]['releasedate']}"
+- if selectedmovie[0]['movierating'] != nil
+    p = "avg rating: #{selectedmovie[0]['movierating'].round(2)}"
+p = "times reviewed: #{selectedmovie[0]['pop']}"
+
+h3 reviews
+div id="reviewsection"
+  - reviews.each do |review|
+    div class="reviewtile" 
+        a href="/review/#{review['reviewid']}" #{review['title']}
+        br
+        a href="/user/#{allusers.find { |user| user["userid"] == review['user'] }['username']}" By #{allusers.find { |user| user["userid"] == review['user'] }['username']}
+        p = review['reviewtext']
+        p = "Likes: #{review['likes']}"
+        p = "Rating: #{review['rating']}"

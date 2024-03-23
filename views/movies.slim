@@ -4,4 +4,9 @@ div id="moviesection"
   - movies.each do |movie|
     div class="movietile" 
       a href="movies/#{movie['movieid']}" #{movie["moviename"]}
+      - if movie['movierating'] != nil
+          p = "Rating: #{movie['movierating'].round(2)}"
+      - else
+          p = "ingen rating än :("
       a href="writereview/#{movie['movieid']}" Skriv Review
+00

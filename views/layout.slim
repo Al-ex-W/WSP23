@@ -6,12 +6,15 @@ html lang="en"
         title Document
         link rel="stylesheet" href="css/style.css"/
     body 
+        - if flash[:notice]
+           p.notice = flash[:notice]
         nav 
-            a href="/myprofile" My Profile
+            - if session[:currentuser] != nil
+                a href="/user/#{session[:currentuser]}" #{session[:currentuser]}
+                a href="/logout" Log Out
+            - else
+                a href="/login" Log in
             a href="/" Movies
             a href="/reviews" Reviews
-            - if session[:currentuser] != nil
-                a href="user/#{session[:currentuser]}" #{session[:currentuser]}
-            - else
-                a href="login" Log in
         == yield
+        script src="js/main.js"

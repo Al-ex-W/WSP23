@@ -1,0 +1,9 @@
+h2 review 
+
+h3 = selectedreview[0]['title']
+a href="/user/#{authoruser[0]['username']}" by: #{authoruser[0]['username']}
+p = "likes: #{selectedreview[0]['likes']}"
+p = selectedreview[0]['reviewtext']
+p = "Och ratingen: #{selectedreview[0]['rating']} av 5!"
+form action="/like/#{selectedreview[0]['reviewid']}" method="POST"
+    input type="submit" value="Likea"

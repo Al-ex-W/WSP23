@@ -1,0 +1,10 @@
+h2 reviews 
+
+div id="reviewsection"
+  - allreviews.each do |review|
+    div class="reviewtile" 
+        a href="review/#{review['reviewid']}" #{review['title']}
+        a href="user/#{allusers.find { |user| user["userid"] == review['user'] }['username']}" By #{allusers.find { |user| user["userid"] == review['user'] }['username']}
+        p = review['reviewtext']
+        p = "Likes: #{review['likes']}"
+        p = "Rating: #{review['rating']}"

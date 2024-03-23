@@ -1,0 +1,12 @@
+h2 profile of #{userinfo[0]['username']}
+
+
+h3 reviews 
+
+div id="reviewsection"
+  - usersreviews.each do |review|
+    div class="reviewtile" 
+        a href="/review/#{review['reviewid']}" #{review['title']}
+        p = review['reviewtext']
+        p = "Likes: #{review['likes']}"
+        p = "Rating: #{review['rating']}"
