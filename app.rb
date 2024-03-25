@@ -8,7 +8,7 @@ require 'sinatra/flash'
 enable :sessions
 #require_relative './model.rb' 
 "modtools, ska kunna:
-göra users till admin
+göra users till admin, !!fixat!!
 lägga till och redigera filmer
 ta bort reviews. När man tar bort en review måste man också ta bort alla dokumenterade likes i refernce tablen."
 
@@ -30,6 +30,22 @@ get('/reviews') do
   allreviews = db.execute("SELECT * FROM reviews")
   allusers = db.execute("SELECT * FROM users")
   slim(:reviews,locals:{allreviews:allreviews, allusers:allusers})
+end
+
+get('/makeadmin/:username') do
+  if session[:perms] == 2
+    db = SQLite3::Database.new('db/db.db')
+    db.results_as_hash = true
+    db.execute("UPDATE users SET perms = 2 WHERE username = ?",params[:username])
+    flash[:notice] = "made #{params[:username]} admin!"
+    redirect("/user/#{params[:username]}")
+  elsif session[:perms] == 1
+    flash[:notice] = "you are not facilitated to do that"
+    redirect("/user/#{params[:username]}")
+  else
+    flash[:notice] = "only admin can do that, are you admin? log in first."
+    redirect("/user/#{params[:username]}")
+  end
 end
 
 get('/user/:username') do
