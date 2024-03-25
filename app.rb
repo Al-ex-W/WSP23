@@ -9,8 +9,14 @@ enable :sessions
 #require_relative './model.rb' 
 "modtools, ska kunna:
 göra users till admin, !!fixat!!
-lägga till och redigera filmer
-ta bort reviews. När man tar bort en review måste man också ta bort alla dokumenterade likes i refernce tablen."
+lägga till och redigera filmer !!fixat!!
+ta bort reviews. När man tar bort en review måste man också ta bort alla dokumenterade likes i refernce tablen !!fixat!!, och justera pop och avg rating (optional)
+
+Saker för A:
+Inner Join
+logga SQL queries hos users
+model.rb (MVC)
+Yardoc"
 
 
 get('/') do
@@ -47,6 +53,89 @@ get('/makeadmin/:username') do
     redirect("/user/#{params[:username]}")
   end
 end
+
+get('/deletereview/:reviewid') do 
+  if session[:perms] == 2
+    db = SQLite3::Database.new('db/db.db')
+    db.results_as_hash = true
+    db.execute('DELETE FROM reviews WHERE reviewid = ?',params[:reviewid])
+    db.execute('DELETE FROM users_like_reviews WHERE reviewid = ?',params[:reviewid])
+    flash[:notice] = "deleted review with id #{params[:reviewid]}"
+    redirect('/reviews')
+  elsif session[:perms] == 1
+    flash[:notice] = "you are not facilitated to do that"
+    redirect("/review/#{params[:reviewid]}")
+  else
+    flash[:notice] = "only admin can do that, are you admin? log in first."
+    redirect("/review/#{params[:reviewid]}")
+  end
+end
+
+get('/addmovie') do
+  if session[:perms] == 2
+    slim(:addmovie)
+  elsif session[:perms] == 1
+    flash[:notice] = "you are not facilitated to do that"
+    redirect("/")
+  else
+    flash[:notice] = "only admin can do that, are you admin? log in first."
+    redirect("/")
+  end
+end
+
+get('/editmovie/:movieid') do
+  if session[:perms] == 2
+    db = SQLite3::Database.new('db/db.db')
+    db.results_as_hash = true
+    movieinfo = db.execute("SELECT * FROM movies WHERE movieid = ?", params[:movieid])
+    slim(:editmovie, locals:{movieinfo:movieinfo})
+  elsif session[:perms] == 1
+    flash[:notice] = "you are not facilitated to do that"
+    redirect("/")
+  else
+    flash[:notice] = "only admin can do that, are you admin? log in first."
+    redirect("/")
+  end
+end
+
+post('/doeditmovie/:movieid') do 
+  if session[:perms] == 2
+    title = params[:title]
+    releasedate = params[:releasedate]
+    db = SQLite3::Database.new('db/db.db')
+    db.results_as_hash = true
+    db.execute('UPDATE movies SET moviename = ?, releasedate = ? WHERE movieid = ?', title, releasedate, params[:movieid])
+    flash[:notice] = "updated movie #{title}"
+    redirect('/')
+  elsif session[:perms] == 1
+    flash[:notice] = "you are not facilitated to do that"
+    redirect('/')
+  else
+    flash[:notice] = "only admin can do that, are you admin? log in first."
+    redirect('/')
+  end
+end
+
+post('/submitmovie') do 
+  if session[:perms] == 2
+    title = params[:title]
+    releasedate = params[:releasedate]
+    pop = 0
+    db = SQLite3::Database.new('db/db.db')
+    db.results_as_hash = true
+    db.execute('INSERT INTO "movies" (moviename,releasedate,pop) VALUES (?,?,?)',title,releasedate,pop)
+    flash[:notice] = "added movie #{title}"
+    redirect('/')
+  elsif session[:perms] == 1
+    flash[:notice] = "you are not facilitated to do that"
+    redirect('/')
+  else
+    flash[:notice] = "only admin can do that, are you admin? log in first."
+    redirect('/')
+  end
+end
+
+
 
 get('/user/:username') do
   db = SQLite3::Database.new('db/db.db')

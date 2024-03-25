@@ -1,6 +1,8 @@
-h2 review 
+h2 review
 
 h3 = selectedreview[0]['title']
+- if session[:perms] == 2
+    a href="/deletereview/#{selectedreview[0]['reviewid']}" Delete Review
 a href="/user/#{authoruser[0]['username']}" by: #{authoruser[0]['username']}
 p = "likes: #{selectedreview[0]['likes']}"
 p = selectedreview[0]['reviewtext']

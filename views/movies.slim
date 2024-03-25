@@ -1,5 +1,8 @@
 h1 all movies
 
+- if session[:perms] == 2
+    a href="/addmovie" Add New Movie
+
 div id="moviesection"
   - movies.each do |movie|
     div class="movietile" 

@@ -1,0 +1,5 @@
+h2 = "edit #{movieinfo[0]['moviename']}"
+form action="/doeditmovie/#{movieinfo[0]['movieid']}" method="POST"
+    input type="text" name="title" placeholder="Movie Title here" value="#{movieinfo[0]['moviename']}"
+    input type="text" name="releasedate" placeholder="Releasedate here" value="#{movieinfo[0]['releasedate']}"
+    input type="submit" value="Confirm movie edit"
