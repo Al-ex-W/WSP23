@@ -6,19 +6,15 @@ require 'sqlite3'
 require 'bcrypt'
 require 'sinatra/flash'
 enable :sessions
-#require_relative './model.rb' 
+require_relative './model.rb' 
 "modtools, ska kunna:
 göra users till admin, !!fixat!!
 lägga till och redigera filmer !!fixat!!
 ta bort reviews. När man tar bort en review måste man också ta bort alla dokumenterade likes i refernce tablen !!fixat!!, och justera pop och avg rating (optional)
 
 Saker för A:
-Inner Join
-SELECT *
-FROM tablel
-INNER JOIN table2
-ON tablel.column_name = table2.column_name
-logga SQL queries hos users
+Inner Join: SELECT * FROM tablel INNER JOIN table2 ON tablel.column_name = table2.column_name !!!FIXAT!!!
+logga SQL queries hos users !!!!FIXAT!!!
 model.rb (MVC)
 Yardoc"
 
@@ -37,9 +33,8 @@ end
 get('/reviews') do
   db = SQLite3::Database.new('db/db.db')
   db.results_as_hash = true
-  allreviews = db.execute("SELECT * FROM reviews")
-  allusers = db.execute("SELECT * FROM users")
-  slim(:reviews,locals:{allreviews:allreviews, allusers:allusers})
+  reviewsandusers = db.execute("SELECT * FROM reviews INNER JOIN users ON reviews.user = users.userid")
+  slim(:reviews,locals:{reviewsandusers:reviewsandusers})
 end
 
 get('/makeadmin/:username') do
@@ -144,13 +139,12 @@ end
 get('/user/:username') do
   db = SQLite3::Database.new('db/db.db')
   db.results_as_hash = true
-  userinfo = db.execute("SELECT * FROM users WHERE username = ?",params[:username])
-  if userinfo[0] == nil
-    "user does not exist"
+  userandreviews = db.execute("SELECT * FROM users LEFT JOIN reviews ON users.userid = reviews.user WHERE users.username = ?",params[:username])
+  if userandreviews[0] == nil
+    flash[:notice] = "user \"#{params[:username]}\" Does not exist bruh"
+    redirect('/')
   else
-    usersreviews = db.execute("SELECT * FROM reviews WHERE user = ?",userinfo[0]['userid'])
-    p "här är userns resviews: #{usersreviews}"
-    slim(:browseuser,locals:{userinfo:userinfo, usersreviews:usersreviews})
+    slim(:browseuser,locals:{userandreviews:userandreviews})
   end
 end
 
@@ -168,17 +162,24 @@ post('/writereview/submitreview/:movieid') do
     likes = 0
     db = SQLite3::Database.new('db/db.db')
     db.results_as_hash = true
-    movieinfo = db.execute("SELECT * FROM movies WHERE movieid = ?", movieid)
-    p "movieinfo är:#{movieinfo}"
-    newpopularity = (movieinfo[0]['pop']).to_i + 1
-    if (movieinfo[0]['movierating']) == nil
-      movieinfo[0]['movierating'] = 0
+    log = db.execute("SELECT * FROM userlog WHERE userip = ? AND time > ?",request.ip, (Time.now.to_i - 300))
+    if log.count >= 5 && session[:perms] < 2
+      flash[:notice] = "too many review attempts"
+      redirect('/')
+    else
+      db.execute("INSERT INTO userlog (userip,time) VALUES (?,?)",request.ip, Time.now.to_i)
+      movieinfo = db.execute("SELECT * FROM movies WHERE movieid = ?", movieid)
+      p "movieinfo är:#{movieinfo}"
+      newpopularity = (movieinfo[0]['pop']).to_i + 1
+      if (movieinfo[0]['movierating']) == nil
+        movieinfo[0]['movierating'] = 0
+      end
+      newrating = (((movieinfo[0]['movierating']).to_f * (movieinfo[0]['pop'])) + rating.to_i)/newpopularity
+      title = "#{title} - #{movieinfo[0]['moviename']}"
+      db.execute('UPDATE movies SET pop = ?, movierating = ? WHERE movieid = ?', newpopularity, newrating, movieid)
+      db.execute('INSERT INTO "reviews" (movieid,title,reviewtext,rating,user,likes) VALUES (?,?,?,?,?,?)',movieid,title,reviewtext,rating,session[:id],likes)
+      redirect('/')
     end
-    newrating = (((movieinfo[0]['movierating']).to_f * (movieinfo[0]['pop'])) + rating.to_i)/newpopularity
-    title = "#{title} - #{movieinfo[0]['moviename']}"
-    db.execute('UPDATE movies SET pop = ?, movierating = ? WHERE movieid = ?', newpopularity, newrating, movieid)
-    db.execute('INSERT INTO "reviews" (movieid,title,reviewtext,rating,user,likes) VALUES (?,?,?,?,?,?)',movieid,title,reviewtext,rating,session[:id],likes)
-    redirect('/')
   else
     flash[:notice] = "You must be logged in to do that"
     redirect('/login')
@@ -211,16 +212,20 @@ post('/like/:reviewid') do
     p "hejhej test test den ska likea nu"
     db = SQLite3::Database.new('db/db.db')
     db.results_as_hash = true
-    selectedreview = db.execute("SELECT * FROM reviews WHERE reviewid = ?", params[:reviewid])
-    likelist = db.execute("SELECT * FROM users_like_reviews WHERE reviewid = ? AND userid = ?", params[:reviewid], session[:id])
+    likelist = db.execute("SELECT * FROM users_like_reviews right JOIN reviews ON users_like_reviews.reviewid = reviews.reviewid WHERE reviews.reviewid = ?", params[:reviewid])
     if likelist.empty?
-      newlikes = (selectedreview[0]['likes'].to_i) + 1
-      db.execute('UPDATE reviews SET likes = ? WHERE reviewid = ?', newlikes, params[:reviewid])
-      db.execute('INSERT INTO users_like_reviews (userid,reviewid) VALUES (?,?)',session[:id],params[:reviewid])
-      redirect("review/#{params[:reviewid]}")
+      flash[:notice] = "review does not exist"
+      redirect('/reviews')
     else
-      flash[:notice] = "You have already liked this review"
-      redirect("review/#{params[:reviewid]}")
+      if likelist.any? {|hash| hash['userid'] == session[:id]}
+        flash[:notice] = "You have already liked this review"
+        redirect("review/#{params[:reviewid]}") 
+      else
+        newlikes = (likelist[0]['likes'].to_i) + 1
+        db.execute('UPDATE reviews SET likes = ? WHERE reviewid = ?', newlikes, params[:reviewid])
+        db.execute('INSERT INTO users_like_reviews (userid,reviewid) VALUES (?,?)',session[:id],params[:reviewid])
+        redirect("review/#{params[:reviewid]}")
+      end
     end
   else
     flash[:notice] = "You must be logged in to do that"
@@ -236,10 +241,9 @@ end
 get('/review/:reviewid') do
   db = SQLite3::Database.new('db/db.db')
   db.results_as_hash = true
-  selectedreview = db.execute("SELECT * FROM reviews WHERE reviewid = ?", params[:reviewid])
+  selectedreview = db.execute("SELECT * FROM reviews INNER JOIN users ON reviews.user = users.userid WHERE reviewid = ?", params[:reviewid])
   p "userns id e: #{selectedreview[0]['user']}"
-  authoruser = db.execute("SELECT * FROM users WHERE userid = ?", selectedreview[0]['user'])
-  slim(:"browsereview",locals:{selectedreview:selectedreview, authoruser:authoruser})
+  slim(:"browsereview",locals:{selectedreview:selectedreview})
 end
 get('/movies') do
   db = SQLite3::Database.new("db/db.db")
@@ -252,10 +256,8 @@ end
 get('/movies/:movieid') do
   db = SQLite3::Database.new("db/db.db")
   db.results_as_hash = true
-  selectedmovie = db.execute("SELECT * FROM movies WHERE movieid = ?", params[:movieid])
-  reviews = db.execute("SELECT * FROM reviews WHERE movieid = ?", params[:movieid])
-  allusers = db.execute("SELECT * FROM users")
-  slim(:"browsemovie",locals:{selectedmovie:selectedmovie, reviews:reviews, allusers:allusers})
+  selectedmovie = db.execute("SELECT * FROM movies INNER JOIN reviews on movies.movieid = reviews.movieid LEFT JOIN users on reviews.user = users.userid WHERE movies.movieid = ?", params[:movieid])
+  slim(:"browsemovie",locals:{selectedmovie:selectedmovie})
 end
 
 get('/writereview/:movieid') do
@@ -277,24 +279,30 @@ post('/dologin') do
   password=params[:password]
   db = SQLite3::Database.new('db/db.db')
   db.results_as_hash = true
-  result = db.execute("SELECT * FROM users WHERE username = ?",username).first
-  if result == nil
-    flash[:notice] = "No such user"
+  log = db.execute("SELECT * FROM userlog WHERE userip = ? AND time > ?",request.ip, (Time.now.to_i - 300))
+  if log.count >= 5
+    flash[:notice] = "too many login attempts"
     redirect('/login')
   else
-    pwdigest = result["pwdigest"]
-    id = result["userid"]
-    currentuser = result["username"]
-    perms = result["perms"]
-    if BCrypt::Password.new(pwdigest) == password
-      session[:id] = id
-      session[:currentuser] = currentuser
-      session[:perms] = perms
-      redirect('/')
-    else
-      flash[:notice] = "fel lösen"
+    db.execute("INSERT INTO userlog (userip,time) VALUES (?,?)",request.ip, Time.now.to_i)
+    result = db.execute("SELECT * FROM users WHERE username = ?",username).first
+    if result == nil
+      flash[:notice] = "No such user"
       redirect('/login')
+    else
+      pwdigest = result["pwdigest"]
+      id = result["userid"]
+      currentuser = result["username"]
+      perms = result["perms"]
+      if BCrypt::Password.new(pwdigest) == password
+        session[:id] = id
+        session[:currentuser] = currentuser
+        session[:perms] = perms
+        redirect('/')
+      else
+        flash[:notice] = "fel lösen"
+        redirect('/login')
+      end
     end
   end
 end
-

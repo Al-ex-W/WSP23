@@ -8,11 +8,11 @@ p = "times reviewed: #{selectedmovie[0]['pop']}"
 
 h3 reviews
 div id="reviewsection"
-  - reviews.each do |review|
+  - selectedmovie.each do |review|
     div class="reviewtile" 
         a href="/review/#{review['reviewid']}" #{review['title']}
         br
-        a href="/user/#{allusers.find { |user| user["userid"] == review['user'] }['username']}" By #{allusers.find { |user| user["userid"] == review['user'] }['username']}
+        a href="/user/#{review['username']}" By #{review['username']}
         p = review['reviewtext']
         p = "Likes: #{review['likes']}"
         p = "Rating: #{review['rating']}"
