@@ -14,6 +14,10 @@ ta bort reviews. När man tar bort en review måste man också ta bort alla doku
 
 Saker för A:
 Inner Join
+SELECT *
+FROM tablel
+INNER JOIN table2
+ON tablel.column_name = table2.column_name
 logga SQL queries hos users
 model.rb (MVC)
 Yardoc"
