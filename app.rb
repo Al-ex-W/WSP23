@@ -6,7 +6,8 @@ require 'sqlite3'
 require 'bcrypt'
 require 'sinatra/flash'
 enable :sessions
-require_relative './model.rb' 
+require_relative './model.rb'
+include Model
 "modtools, ska kunna:
 göra users till admin, !!fixat!!
 lägga till och redigera filmer !!fixat!!
@@ -16,12 +17,11 @@ Saker för A:
 Inner Join: SELECT * FROM tablel INNER JOIN table2 ON tablel.column_name = table2.column_name !!!FIXAT!!!
 logga SQL queries hos users !!!!FIXAT!!!
 model.rb (MVC)
-Yardoc"
+Yardoc !!!Fixat!!!"
 
 
 get('/') do
-    db = SQLite3::Database.new("db/db.db")
-    db.results_as_hash = true
+    db = fetchdb
     result = db.execute("SELECT * FROM movies")
     p result
     slim(:"movies",locals:{movies:result})
@@ -31,16 +31,14 @@ get('/') do
 end
 
 get('/reviews') do
-  db = SQLite3::Database.new('db/db.db')
-  db.results_as_hash = true
+  db = fetchdb
   reviewsandusers = db.execute("SELECT * FROM reviews INNER JOIN users ON reviews.user = users.userid")
   slim(:reviews,locals:{reviewsandusers:reviewsandusers})
 end
 
 get('/makeadmin/:username') do
   if session[:perms] == 2
-    db = SQLite3::Database.new('db/db.db')
-    db.results_as_hash = true
+    db = fetchdb
     db.execute("UPDATE users SET perms = 2 WHERE username = ?",params[:username])
     flash[:notice] = "made #{params[:username]} admin!"
     redirect("/user/#{params[:username]}")
@@ -55,8 +53,7 @@ end
 
 get('/deletereview/:reviewid') do 
   if session[:perms] == 2
-    db = SQLite3::Database.new('db/db.db')
-    db.results_as_hash = true
+    db = fetchdb
     db.execute('DELETE FROM reviews WHERE reviewid = ?',params[:reviewid])
     db.execute('DELETE FROM users_like_reviews WHERE reviewid = ?',params[:reviewid])
     flash[:notice] = "deleted review with id #{params[:reviewid]}"
@@ -84,8 +81,7 @@ end
 
 get('/editmovie/:movieid') do
   if session[:perms] == 2
-    db = SQLite3::Database.new('db/db.db')
-    db.results_as_hash = true
+    db = fetchdb
     movieinfo = db.execute("SELECT * FROM movies WHERE movieid = ?", params[:movieid])
     slim(:editmovie, locals:{movieinfo:movieinfo})
   elsif session[:perms] == 1
@@ -101,8 +97,7 @@ post('/doeditmovie/:movieid') do
   if session[:perms] == 2
     title = params[:title]
     releasedate = params[:releasedate]
-    db = SQLite3::Database.new('db/db.db')
-    db.results_as_hash = true
+    db = fetchdb
     db.execute('UPDATE movies SET moviename = ?, releasedate = ? WHERE movieid = ?', title, releasedate, params[:movieid])
     flash[:notice] = "updated movie #{title}"
     redirect('/')
@@ -120,8 +115,7 @@ post('/submitmovie') do
     title = params[:title]
     releasedate = params[:releasedate]
     pop = 0
-    db = SQLite3::Database.new('db/db.db')
-    db.results_as_hash = true
+    db = fetchdb
     db.execute('INSERT INTO "movies" (moviename,releasedate,pop) VALUES (?,?,?)',title,releasedate,pop)
     flash[:notice] = "added movie #{title}"
     redirect('/')
@@ -137,8 +131,7 @@ end
 
 
 get('/user/:username') do
-  db = SQLite3::Database.new('db/db.db')
-  db.results_as_hash = true
+  db = fetchdb
   userandreviews = db.execute("SELECT * FROM users LEFT JOIN reviews ON users.userid = reviews.user WHERE users.username = ?",params[:username])
   if userandreviews[0] == nil
     flash[:notice] = "user \"#{params[:username]}\" Does not exist bruh"
@@ -160,8 +153,7 @@ post('/writereview/submitreview/:movieid') do
     rating = params[:rating]
     user = session[:currentuser]
     likes = 0
-    db = SQLite3::Database.new('db/db.db')
-    db.results_as_hash = true
+    db = fetchdb
     log = db.execute("SELECT * FROM userlog WHERE userip = ? AND time > ?",request.ip, (Time.now.to_i - 300))
     if log.count >= 5 && session[:perms] < 2
       flash[:notice] = "too many review attempts"
@@ -193,7 +185,7 @@ post('/doregister') do
 
   if (password == password_confirm)
     password_digest = BCrypt::Password.create(password)
-    db = SQLite3::Database.new('db/db.db')
+    db = fetchdb
     db.execute('INSERT INTO "users" (username,pwdigest,perms) VALUES (?,?,?)',username,password_digest,1)
     redirect('/')
   else
@@ -210,8 +202,7 @@ end
 post('/like/:reviewid') do
   if session[:perms] != nil
     p "hejhej test test den ska likea nu"
-    db = SQLite3::Database.new('db/db.db')
-    db.results_as_hash = true
+    db = fetchdb
     likelist = db.execute("SELECT * FROM users_like_reviews right JOIN reviews ON users_like_reviews.reviewid = reviews.reviewid WHERE reviews.reviewid = ?", params[:reviewid])
     if likelist.empty?
       flash[:notice] = "review does not exist"
@@ -239,23 +230,20 @@ get('/logout') do
 end
 
 get('/review/:reviewid') do
-  db = SQLite3::Database.new('db/db.db')
-  db.results_as_hash = true
+  db = fetchdb
   selectedreview = db.execute("SELECT * FROM reviews INNER JOIN users ON reviews.user = users.userid WHERE reviewid = ?", params[:reviewid])
   p "userns id e: #{selectedreview[0]['user']}"
   slim(:"browsereview",locals:{selectedreview:selectedreview})
 end
 get('/movies') do
-  db = SQLite3::Database.new("db/db.db")
-  db.results_as_hash = true
+  db = fetchdb
   result = db.execute("SELECT * FROM movies")
   p result
   slim(:"movies",locals:{movies:result})
 end
 
 get('/movies/:movieid') do
-  db = SQLite3::Database.new("db/db.db")
-  db.results_as_hash = true
+  db = fetchdb
   selectedmovie = db.execute("SELECT * FROM movies INNER JOIN reviews on movies.movieid = reviews.movieid LEFT JOIN users on reviews.user = users.userid WHERE movies.movieid = ?", params[:movieid])
   slim(:"browsemovie",locals:{selectedmovie:selectedmovie})
 end
@@ -263,8 +251,7 @@ end
 get('/writereview/:movieid') do
   if session[:perms] != nil
     movieid = params[:movieid]
-    db = SQLite3::Database.new("db/db.db")
-    db.results_as_hash = true
+    db = fetchdb
     result = db.execute("SELECT * FROM movies WHERE movieid = ?", movieid)
     slim(:writereview,locals:{reviewedmovie:result})
   else
@@ -277,8 +264,7 @@ end
 post('/dologin') do
   username=params[:username]
   password=params[:password]
-  db = SQLite3::Database.new('db/db.db')
-  db.results_as_hash = true
+  db = fetchdb
   log = db.execute("SELECT * FROM userlog WHERE userip = ? AND time > ?",request.ip, (Time.now.to_i - 300))
   if log.count >= 5
     flash[:notice] = "too many login attempts"
