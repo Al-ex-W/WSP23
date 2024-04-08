@@ -238,13 +238,14 @@ end
 get('/movies') do
   db = fetchdb
   result = db.execute("SELECT * FROM movies")
-  p result
+  # p result
   slim(:"movies",locals:{movies:result})
 end
 
 get('/movies/:movieid') do
   db = fetchdb
   selectedmovie = db.execute("SELECT * FROM movies INNER JOIN reviews on movies.movieid = reviews.movieid LEFT JOIN users on reviews.user = users.userid WHERE movies.movieid = ?", params[:movieid])
+  p "här är det: #{selectedmovie}"
   slim(:"browsemovie",locals:{selectedmovie:selectedmovie})
 end
 
