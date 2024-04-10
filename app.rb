@@ -244,7 +244,11 @@ end
 
 get('/movies/:movieid') do
   db = fetchdb
-  selectedmovie = db.execute("SELECT * FROM movies INNER JOIN reviews on movies.movieid = reviews.movieid LEFT JOIN users on reviews.user = users.userid WHERE movies.movieid = ?", params[:movieid])
+  selectedmovie = db.execute("SELECT movies.*, reviews.reviewid, reviews.reviewtext, reviews.user, reviews.likes, reviews.title, reviews.rating, users.username, users.pwdigest, users.userid AS user_id, users.perms, movies.movieid AS movie_id
+    FROM movies 
+    LEFT JOIN reviews ON movies.movieid = reviews.movieid 
+    LEFT JOIN users ON reviews.user = users.userid 
+    WHERE movies.movieid = ?", params[:movieid])
   p "här är det: #{selectedmovie}"
   slim(:"browsemovie",locals:{selectedmovie:selectedmovie})
 end
