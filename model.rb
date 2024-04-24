@@ -6,7 +6,11 @@ module Model
         return db
     end
 
-
+    def is_checked(i)
+        if selectedreview[0]['rating'].to_i == i
+            return "checked"
+        end
+    end
 
 
 

@@ -8,16 +8,12 @@ require 'sinatra/flash'
 enable :sessions
 require_relative './model.rb'
 include Model
-"modtools, ska kunna:
-göra users till admin, !!fixat!!
-lägga till och redigera filmer !!fixat!!
-ta bort reviews. När man tar bort en review måste man också ta bort alla dokumenterade likes i refernce tablen !!fixat!!, och justera pop och avg rating (optional)
-
-Saker för A:
-Inner Join: SELECT * FROM tablel INNER JOIN table2 ON tablel.column_name = table2.column_name !!!FIXAT!!!
-logga SQL queries hos users !!!!FIXAT!!!
-model.rb (MVC)
-Yardoc !!!Fixat!!!"
+"
+Komplettera:
+Kunna uppdatera reviews
+namnge restful routes
+beforeblock
+säkra upp delete / update"
 
 
 get('/') do
@@ -232,9 +228,18 @@ end
 get('/review/:reviewid') do
   db = fetchdb
   selectedreview = db.execute("SELECT * FROM reviews INNER JOIN users ON reviews.user = users.userid WHERE reviewid = ?", params[:reviewid])
-  p "userns id e: #{selectedreview[0]['user']}"
+  p "userns id e: #{selectedreview}"
   slim(:"browsereview",locals:{selectedreview:selectedreview})
 end
+
+get('/review/:reviewid/edit') do
+  db = fetchdb
+  selectedreview = db.execute("SELECT * FROM reviews WHERE reviewid = ?", params[:reviewid])
+  p selectedreview
+  p "här va det !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!v"
+  slim(:"editreview",locals:{selectedreview:selectedreview})
+end
+
 get('/movies') do
   db = fetchdb
   result = db.execute("SELECT * FROM movies")
