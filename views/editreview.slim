@@ -1,8 +1,8 @@
-h2 edit review \"#{selectedreview[0]['title']}\"
-form action="editreview/#{selectedreview[0]['reviewid']}" method="POST"
+h2 edit review "#{selectedreview[0]['title']}"
+form action="edit" method="POST"
     input type="text" name="title" placeholder="Your reviewtitle here" value="#{selectedreview[0]['title']}"
     input type="text" name="reviewtext" placeholder="write here" value="#{selectedreview[0]['reviewtext']}"
     - for i in 1..5
-        input type="radio" name="rating" value="1" #{is_checked(i)}
+        input type="radio" name="rating" value="#{i}"
         label for="#{i}" #{i} Stars
     input type="submit" value="Publish review" 

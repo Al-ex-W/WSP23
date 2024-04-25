@@ -10,7 +10,7 @@ require_relative './model.rb'
 include Model
 "
 Komplettera:
-Kunna uppdatera reviews
+Kunna uppdatera reviews -- > klart men måste kunna cascadea ratingen då den finns i filmtabellen. Kanske borde calca ratingen dynamiskt när man browsar reviews?
 namnge restful routes
 beforeblock
 säkra upp delete / update"
@@ -239,6 +239,39 @@ get('/review/:reviewid/edit') do
   p "här va det !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!v"
   slim(:"editreview",locals:{selectedreview:selectedreview})
 end
+
+post('/review/:reviewid/edit') do
+  if session[:perms] != nil
+    title = params[:title]
+    reviewtext = params[:reviewtext]
+    rating = params[:rating]
+    user = session[:currentuser]
+    db = fetchdb
+    log = db.execute("SELECT * FROM userlog WHERE userip = ? AND time > ?",request.ip, (Time.now.to_i - 300))
+    if log.count >= 60 && session[:perms] != 2
+      flash[:notice] = "too many review edit attempts"
+      redirect('/')
+    else
+      db.execute("INSERT INTO userlog (userip,time) VALUES (?,?)",request.ip, Time.now.to_i)
+      reviewinfo = db.execute("SELECT * FROM reviews WHERE reviewid = ?", params[:reviewid])
+      if reviewinfo.empty?
+        flash[:notice] = "review does not exist"
+        redirect("/reviews")
+      elsif reviewinfo[0]['user'] != session[:id]
+        flash[:notice] = "You are not the owner of this review"
+        redirect("/review/#{params[:reviewid]}")
+      else
+        db.execute('UPDATE reviews SET title = ?, reviewtext = ?, rating = ? WHERE reviewid = ?', title, reviewtext, rating, params[:reviewid])
+        flash[:notice] = "Updated the review"
+        redirect("/review/#{params[:reviewid]}")
+      end
+    end
+  else
+    flash[:notice] = "You must be logged in to do that"
+    redirect('/login')
+  end
+end
+
 
 get('/movies') do
   db = fetchdb
