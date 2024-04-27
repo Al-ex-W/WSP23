@@ -1,0 +1,10 @@
+h2 reviews 
+
+div id="reviewsection"
+  - reviewsandusers.each do |review|
+    div class="reviewtile" 
+        a href="reviews/#{review['reviewid']}" #{review['title']}
+        a href="users/#{reviewsandusers.find { |user| user["userid"] == review['user'] }['username']}" By #{reviewsandusers.find { |user| user["userid"] == review['user'] }['username']}
+        p = "#{review['reviewtext'].slice(0, 300)}" + "..."
+        p = "Likes: #{review['likes']}"
+        p = "Rating: #{review['rating']}"

@@ -1,7 +1,7 @@
 h1 all movies
 
 - if session[:perms] == 2
-    a href="/addmovie" Add New Movie
+    a href="/movies/new" Add New Movie
 
 div id="moviesection"
   - movies.each do |movie|
@@ -11,5 +11,5 @@ div id="moviesection"
           p = "Rating: #{movie['movierating'].round(2)}"
       - else
           p = "ingen rating än :("
-      a href="writereview/#{movie['movieid']}" Skriv Review
+      a href="reviews/#{movie['movieid']}/new" Skriv Review
 00

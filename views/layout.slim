@@ -12,11 +12,11 @@ html lang="en"
            p.notice = flash[:notice]
         nav 
             - if session[:currentuser] != nil
-                a href="/user/#{session[:currentuser]}" #{session[:currentuser]}
+                a href="/users/#{session[:currentuser]}" #{session[:currentuser]}
                 a href="/logout" Log Out
             - else
                 a href="/login" Log in
-            a href="/" Movies
+            a href="/movies" Movies
             a href="/reviews" Reviews
         == yield
         script src="js/main.js"

@@ -1,6 +1,6 @@
 h2 = selectedmovie[0]['moviename']
 - if session[:perms] == 2
-    a href="/editmovie/#{selectedmovie[0]['movieid']}" Edit Movie
+    a href="/movies/#{selectedmovie[0]['movieid']}/edit" Edit Movie
 p = "Release date: #{selectedmovie[0]['releasedate']}"
 - if selectedmovie[0]['movierating'] != nil
     p = "avg rating: #{selectedmovie[0]['movierating'].round(2)}"
@@ -10,9 +10,9 @@ p = "times reviewed: #{selectedmovie[0]['pop']}"
     div id="reviewsection"
       - selectedmovie.each do |review|
         div class="reviewtile" 
-            a href="/review/#{review['reviewid']}" #{review['title']}
+            a href="/reviews/#{review['reviewid']}" #{review['title']}
             br
-            a href="/user/#{review['username']}" By #{review['username']}
+            a href="/users/#{review['username']}" By #{review['username']}
             p = review['reviewtext']
             p = "Likes: #{review['likes']}"
             p = "Rating: #{review['rating']}"

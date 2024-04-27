@@ -1,7 +1,8 @@
 h2 profile of #{userandreviews[0]['username']}
 
 - if session[:perms] == 2 && userandreviews[0]['perms'] != 2
-    a href="/makeadmin/#{userandreviews[0]['username']}" Make admin
+    form action="/users/#{userandreviews[0]['username']}/makeadmin" method="POST"
+      input type="submit" value="Make Admin"
 
 h3 reviews 
 
@@ -9,7 +10,7 @@ div id="reviewsection"
     - userandreviews.each do |review|
       - if userandreviews[0]['reviewid'] != nil
         div class="reviewtile" 
-            a href="/review/#{review['reviewid']}" #{review['title']}
+            a href="/reviews/#{review['reviewid']}" #{review['title']}
             p = review['reviewtext']
             p = "Likes: #{review['likes']}"
             p = "Rating: #{review['rating']}"

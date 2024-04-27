@@ -1,0 +1,15 @@
+h2 review
+
+h3 = selectedreview[0]['title']
+- if session[:perms] == 2
+    form action="/reviews/#{selectedreview[0]['reviewid']}/delete" method="POST"
+      input type="submit" value="Delete Review"
+- if session[:id] == selectedreview[0]['user']
+    a href="/reviews/#{selectedreview[0]['reviewid']}/edit" Edit review
+br
+a href="/users/#{selectedreview[0]['username']}" by: #{selectedreview[0]['username']}
+p = "likes: #{selectedreview[0]['likes']}"
+p = selectedreview[0]['reviewtext']
+p = "Och ratingen: #{selectedreview[0]['rating']} av 5!"
+form action="/reviews/#{selectedreview[0]['reviewid']}/like" method="POST"
+    input type="submit" value="Likea"
