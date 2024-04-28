@@ -19,6 +19,8 @@ färdigställ yardoc"
 
 #MOVIES
 
+# display landing page
+# @see Model#fetchdb
 get('/') do
     db = fetchdb
     result = db.execute("SELECT * FROM movies")
@@ -26,6 +28,8 @@ get('/') do
     slim(:"movies/index",locals:{movies:result})
 end
 
+# display landing page
+# @see Model#fetchdb
 get('/movies') do
   db = fetchdb
   result = db.execute("SELECT * FROM movies")
@@ -33,14 +37,21 @@ get('/movies') do
   slim(:"movies/index",locals:{movies:result})
 end
 
+# before displaying page for adding a movie
+# @see Model#admin_check
 before('/movies/new') do
   admin_check("/")
 end
 
+# Displays page for adding a movie
+#
 get('/movies/new') do
     slim(:"movies/new")
 end
 
+
+# displays a single movie
+# @param [Integer] :movieid, the ID of the movie
 get('/movies/:movieid') do
   db = fetchdb
   selectedmovie = db.execute("SELECT movies.*, reviews.reviewid, reviews.reviewtext, reviews.user, reviews.likes, reviews.title, reviews.rating, users.username, users.pwdigest, users.userid AS user_id, users.perms, movies.movieid AS movie_id
@@ -52,10 +63,16 @@ get('/movies/:movieid') do
   slim(:"movies/show",locals:{selectedmovie:selectedmovie})
 end
 
+# Before displaying edit page for a movie
+# @param [Integer] :movieid, the ID of the movie
+#
 before('/movies/:movieid/edit') do
   admin_check("/")
 end
 
+# displays edit page for a movie
+# @param [Integer] :movieid, the ID of the movie
+#
 get('/movies/:movieid/edit') do
     db = fetchdb
     movieinfo = db.execute("SELECT * FROM movies WHERE movieid = ?", params[:movieid])
@@ -64,6 +81,10 @@ end
 
 #MOVIES; POST
 
+
+# Updates an existing movie
+# @param [Integer] :movieid, the ID of the movie
+# @see Model#empty_check
 post('/movies/:movieid/update') do 
     admin_check("/")
     title = params[:title]
@@ -75,6 +96,9 @@ post('/movies/:movieid/update') do
     redirect('/')
 end
 
+
+# Adds new movie
+#
 post('/movies') do 
     admin_check("/")
     title = params[:title]
@@ -90,12 +114,17 @@ end
 
 #REVIEWS
 
+# Displays the reviews page, showing all reviews
+#
 get('/reviews') do
   db = fetchdb
   reviewsandusers = db.execute("SELECT * FROM reviews INNER JOIN users ON reviews.user = users.userid")
   slim(:"reviews/index",locals:{reviewsandusers:reviewsandusers})
 end
 
+# Before displaying page for writing a review
+# @param [Integer] :movieid, the ID of the reviewed movie
+#
 before('/reviews/:movieid/new') do
   if session[:perms] == nil
     flash[:notice] = "You must be logged in to do that"
@@ -103,6 +132,9 @@ before('/reviews/:movieid/new') do
   end
 end
 
+# Displays page for writing a review
+# @param [Integer] :movieid, the ID of the reviewed movie
+#
 get('/reviews/:movieid/new') do
   movieid = params[:movieid]
   db = fetchdb
@@ -110,6 +142,10 @@ get('/reviews/:movieid/new') do
   slim(:"reviews/new",locals:{reviewedmovie:result})
 end
 
+# Page for displying a single review
+#
+# @param [Integer] :reviewid, the ID of the review
+# @see Model#review_check
 get('/reviews/:reviewid') do
   db = fetchdb
   $selectedreview = db.execute("SELECT * FROM reviews INNER JOIN users ON reviews.user = users.userid WHERE reviewid = ?", params[:reviewid])
@@ -118,6 +154,11 @@ get('/reviews/:reviewid') do
   slim(:"reviews/show",locals:{selectedreview:selectedreview})
 end
 
+
+#before displatying edit page for a review
+#
+# @param [Integer] :reviewid, the ID of the review
+#
 before('/reviews/:reviewid/edit') do
   db = fetchdb
   $selectedreview = db.execute("SELECT * FROM reviews WHERE reviewid = ?", params[:reviewid])
@@ -128,6 +169,10 @@ before('/reviews/:reviewid/edit') do
   end
 end
 
+
+#Displays edit page for a review
+# @param [Integer] :reviewid, the ID of the review
+#
 get('/reviews/:reviewid/edit') do
   db = fetchdb
   selectedreview = db.execute("SELECT * FROM reviews WHERE reviewid = ?", params[:reviewid])
@@ -139,6 +184,9 @@ end
 #REVIEWS; POST
 
 
+# Deletes a review
+# @param [Integer] :reviewid, the ID of the review
+#
 post('/reviews/:reviewid/delete') do
     admin_check("/reviews/#{params[:reviewid]}")  
     db = fetchdb
@@ -148,6 +196,11 @@ post('/reviews/:reviewid/delete') do
     redirect('/reviews')
 end
 
+
+# Submits a review
+#
+# @param [Integer] :movieid, the ID of the reviewed movie
+# @see Model#empty_check
 post('/reviews/:movieid') do
   user_check
   movieid = params[:movieid].to_i
@@ -179,6 +232,9 @@ post('/reviews/:movieid') do
   end
 end
 
+# Liking a review
+# @param [Integer] :reviewid, the ID of the liked review
+#
 post('/reviews/:reviewid/like') do
   user_check
   p "hejhej test test den ska likea nu"
@@ -200,6 +256,10 @@ post('/reviews/:reviewid/like') do
   end
 end
 
+
+# Updates a review
+# @param [Integer] :reviewid, the ID of the review
+#
 post('/reviews/:reviewid/update') do
   user_check
   title = params[:title]
@@ -240,6 +300,10 @@ end
 
 #USERS
 
+
+# Displays a page showing a single user
+# @param [String] :username, the user's name
+#
 get('/users/:username') do
   db = fetchdb
   userandreviews = db.execute("SELECT * FROM users LEFT JOIN reviews ON users.userid = reviews.user WHERE users.username = ?",params[:username])
@@ -253,6 +317,9 @@ end
 
 #USERS; POST
 
+# Makes a user into an admin
+# @param [String] :username, the user's name
+#
 post('/users/:username/makeadmin') do
   admin_check("/users/#{params[:username]}")
   db = fetchdb
@@ -264,15 +331,22 @@ end
 
 #OTHER
 
+
+# Displays register page
+#
 get('/register') do
   slim(:register)
 end
 
+
+# Displays login page
+#
 get('/login') do
   slim(:login)
 end
 
-
+# Logs out the user
+#
 get('/logout') do 
   session.clear
   redirect('/')
@@ -280,6 +354,8 @@ end
 
 #OTHER; POST
 
+# Registers a user
+# 
 post('/register') do
   username = params[:username]
   password = params[:password]
@@ -302,7 +378,7 @@ post('/register') do
   
 end
 
-
+# Logs in the user
 post('/login') do
   username=params[:username]
   password=params[:password]
