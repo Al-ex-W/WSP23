@@ -31,7 +31,7 @@ module Model
 
     def review_check
         if $selectedreview.empty?
-            flash[:notice] = "review with id #{params[:reviewid]}dos not exist"
+            flash[:notice] = "review with id #{params[:reviewid]} does not exist"
             redirect("/reviews")
         end
     end

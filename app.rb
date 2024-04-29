@@ -4,7 +4,7 @@ require 'sinatra/reloader'
 require 'byebug'
 require 'sqlite3'
 require 'bcrypt'
-require 'sinatra/flash'
+require 'sinatra/flash' 
 enable :sessions
 require_relative './model.rb'
 include Model
@@ -15,7 +15,12 @@ namnge restful routes !fixat!
 beforeblock ?fixat?
 säkra upp delete / update fixat
 Validera inputs fixat
-färdigställ yardoc"
+färdigställ yardoc
+frågor
+hur ska jag skriva yardoc i model
+hur mycket av min app.rb ska vara i model
+Beforeblock post?
+many to many 2 ggr"
 
 #MOVIES
 
@@ -386,7 +391,7 @@ post('/login') do
   empty_check([username,password], '/login')
   db = fetchdb
   log = db.execute("SELECT * FROM userlog WHERE userip = ? AND time > ?",request.ip, (Time.now.to_i - 300))
-  if log.count >= 544
+  if log.count >= 5
     flash[:notice] = "too many login attempts"
     redirect('/login')
   else
