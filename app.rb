@@ -23,7 +23,6 @@ Beforeblock post?
 many to many 2 ggr"
 
 before do
-  p "request path info är #{request.path_info}" 
     if request.request_method == 'GET'
       if [%r{^/movies/new$}, %r{^/movies/([^/]+)/edit$}].any? { |path| request.path_info.match?(path) }
         admin_check("/")
@@ -47,18 +46,14 @@ end
 # display landing page
 # @see Model#fetchdb
 get('/') do
-    $db = fetchdb
-    result = $db.execute("SELECT * FROM movies")
-    p result
+    result = browsemovies()
     slim(:"movies/index",locals:{movies:result})
 end
 
 # display landing page
 # @see Model#fetchdb
 get('/movies') do
-  $db = fetchdb
-  result = $db.execute("SELECT * FROM movies")
-  # p result
+  result = browsemovies()
   slim(:"movies/index",locals:{movies:result})
 end
 
@@ -72,13 +67,8 @@ end
 # displays a single movie
 # @param [Integer] :movieid, the ID of the movie
 get('/movies/:movieid') do
-  $db = fetchdb
-  selectedmovie = $db.execute("SELECT movies.*, reviews.reviewid, reviews.reviewtext, reviews.user, reviews.likes, reviews.title, reviews.rating, users.username, users.pwdigest, users.userid AS user_id, users.perms, movies.movieid AS movie_id
-    FROM movies 
-    LEFT JOIN reviews ON movies.movieid = reviews.movieid 
-    LEFT JOIN users ON reviews.user = users.userid 
-    WHERE movies.movieid = ?", params[:movieid])
-  p "här är det: #{selectedmovie}"
+  movieid = params[:movieid]
+  selectedmovie = showmovie(movieid)
   slim(:"movies/show",locals:{selectedmovie:selectedmovie})
 end
 
@@ -87,8 +77,8 @@ end
 # @param [Integer] :movieid, the ID of the movie
 #
 get('/movies/:movieid/edit') do
-    $db = fetchdb
-    movieinfo = $db.execute("SELECT * FROM movies WHERE movieid = ?", params[:movieid])
+    movieid = params[:movieid]
+    movieinfo = showmovieedit(movieid)
     slim(:"movies/edit", locals:{movieinfo:movieinfo})
 end
 
@@ -98,28 +88,22 @@ end
 # Updates an existing movie
 # @param [Integer] :movieid, the ID of the movie
 # @see Model#empty_check
-post('/movies/:movieid/update') do 
-    title = params[:title]
-    releasedate = params[:releasedate]
-    empty_check([title,releasedate], '/movies/:movieid/update')
-    $db = fetchdb
-    $db.execute('UPDATE movies SET moviename = ?, releasedate = ? WHERE movieid = ?', title, releasedate, params[:movieid])
-    flash[:notice] = "updated movie #{title}"
-    redirect('/')
+post('/movies/:movieid/update') do
+  title = params[:title]
+  releasedate = params[:releasedate]
+  movieid = params[:movieid]
+  domovieedit(title,releasedate,movieid)
+  redirect('/')
 end
 
 
 # Adds new movie
 #
-post('/movies') do 
-    title = params[:title]
-    releasedate = params[:releasedate]
-    pop = 0
-    empty_check([title,releasedate], '/movies')
-    $db = fetchdb
-    $db.execute('INSERT INTO "movies" (moviename,releasedate,pop) VALUES (?,?,?)',title,releasedate,pop)
-    flash[:notice] = "added movie #{title}"
-    redirect('/')
+post('/movies') do
+  title = params[:title]
+  releasedate = params[:releasedate]
+  addnewmovie(title,releasedate)
+  redirect('/')
 end
 
 
@@ -128,8 +112,7 @@ end
 # Displays the reviews page, showing all reviews
 #
 get('/reviews') do
-  $db = fetchdb
-  reviewsandusers = $db.execute("SELECT * FROM reviews INNER JOIN users ON reviews.user = users.userid")
+  reviewsandusers = browsereviews()
   slim(:"reviews/index",locals:{reviewsandusers:reviewsandusers})
 end
 
@@ -138,8 +121,7 @@ end
 #
 get('/reviews/:movieid/new') do
   movieid = params[:movieid]
-  $db = fetchdb
-  result = $db.execute("SELECT * FROM movies WHERE movieid = ?", movieid)
+  result = showreviewadd(movieid)
   slim(:"reviews/new",locals:{reviewedmovie:result})
 end
 
@@ -148,50 +130,18 @@ end
 # @param [Integer] :reviewid, the ID of the review
 # @see Model#review_check
 get('/reviews/:reviewid') do
-  $db = fetchdb
-  $selectedreview = $db.execute("SELECT * FROM reviews INNER JOIN users ON reviews.user = users.userid WHERE reviewid = ?", params[:reviewid])
-  collaborators = $db.execute("SELECT userid FROM users_collab_reviews WHERE reviewid= ?", params[:reviewid])
-  collab_names =[]
-  currentcollabs = []
-  if collaborators != []
-      collaborators.each do |current_user|
-        collab_names << $db.execute("SELECT username FROM users WHERE userid = ?",current_user['userid']).first['username']
-        p collab_names
-      end
-      p collaborators
-      collaborators.each do |x|
-        currentcollabs << x['userid']
-      end
-  else
-      currentcollabs = []
-  end
-  review_check
-  p "userns id e: #{$selectedreview}"
-  p currentcollabs
-  p collab_names
-  slim(:"reviews/show",locals:{selectedreview:$selectedreview, collaborators:currentcollabs, collab_names:collab_names})
+  reviewid = params[:reviewid]
+  result = showreview(reviewid)
+  slim(:"reviews/show",locals:{selectedreview:result[0], collaborators:result[1], collab_names:result[2]})
 end
 
 #Displays edit page for a review
 # @param [Integer] :reviewid, the ID of the review
 #
 get('/reviews/:reviewid/edit') do
-  $db = fetchdb
-  selectedreview = $db.execute("SELECT * FROM reviews WHERE reviewid = ?", params[:reviewid])
-  collaborators = $db.execute("SELECT userid FROM users_collab_reviews WHERE reviewid = ?", params[:reviewid])
-  currentcollabs = []
-  p collaborators
-  p "PDJFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄ"
-  if collaborators != nil
-    collaborators.each do |x|
-      currentcollabs << x['userid']
-    end
-  end
-  review_check
-  if selectedreview[0]['user'] != session[:id] && !currentcollabs.include?(session[:id])
-    flash[:notice] = "You are not owner of review with id #{params[:reviewid]}. are you? log in to correct account first"
-    redirect("/reviews/#{params[:reviewid]}")
-  end
+  reviewid = params[:reviewid]
+  sessionid = session[:id]
+  selectedreview = showreviewedit(reviewid,sessionid)
   slim(:"reviews/edit",locals:{selectedreview:selectedreview})
 end
 
@@ -202,11 +152,8 @@ end
 # @param [Integer] :reviewid, the ID of the review
 #
 post('/reviews/:reviewid/delete') do 
-    $db = fetchdb
-    $db.execute('DELETE FROM reviews WHERE reviewid = ?',params[:reviewid])
-    $db.execute('DELETE FROM users_like_reviews WHERE reviewid = ?',params[:reviewid])
-    $db.execute('DELETE FROM users_collab_reviews WHERE reviewid = ?',params[:reviewid])
-    flash[:notice] = "deleted review with id #{params[:reviewid]}"
+    reviewid = params[:reviewid]
+    doreviewdelete(reviewid)
     redirect('/reviews')
 end
 
@@ -220,21 +167,9 @@ post('/reviews/:movieid') do
   title = params[:title]
   reviewtext = params[:reviewtext]
   rating = params[:rating]
-  p rating
   user = session[:currentuser]
-  likes = 0
-  empty_check([title,reviewtext,movieid,rating,user], "/reviews/#{movieid}/new")
-  do_log
-  movieinfo = $db.execute("SELECT * FROM movies WHERE movieid = ?", movieid)
-  p "movieinfo är:#{movieinfo}"
-  newpopularity = (movieinfo[0]['pop']).to_i + 1
-  if (movieinfo[0]['movierating']) == nil
-    movieinfo[0]['movierating'] = 0
-  end
-  newrating = (((movieinfo[0]['movierating']).to_f * (movieinfo[0]['pop'])) + rating.to_i)/newpopularity
-  title = "#{title} - #{movieinfo[0]['moviename']}"
-  $db.execute('UPDATE movies SET pop = ?, movierating = ? WHERE movieid = ?', newpopularity, newrating, movieid)
-  $db.execute('INSERT INTO "reviews" (movieid,title,reviewtext,rating,user,likes) VALUES (?,?,?,?,?,?)',movieid,title,reviewtext,rating,session[:id],likes)
+  sessionid = session[:id]
+  doreviewsubmit(movieid,title,reviewtext,rating,user,sessionid)
   redirect('/')
 end
 
@@ -242,24 +177,10 @@ end
 # @param [Integer] :reviewid, the ID of the liked review
 #
 post('/reviews/:reviewid/like') do
-
-  p "hejhej test test den ska likea nu"
-  $db = fetchdb
-  likelist = $db.execute("SELECT * FROM users_like_reviews right JOIN reviews ON users_like_reviews.reviewid = reviews.reviewid WHERE reviews.reviewid = ?", params[:reviewid])
-  if likelist.empty?
-    flash[:notice] = "review does not exist"
-    redirect('/reviews')
-  else
-    if likelist.any? {|hash| hash['userid'] == session[:id]}
-      flash[:notice] = "You have already liked this review"
-      redirect("reviews/#{params[:reviewid]}") 
-    else
-      newlikes = (likelist[0]['likes'].to_i) + 1
-      $db.execute('UPDATE reviews SET likes = ? WHERE reviewid = ?', newlikes, params[:reviewid])
-      $db.execute('INSERT INTO users_like_reviews (userid,reviewid) VALUES (?,?)',session[:id],params[:reviewid])
-      redirect("reviews/#{params[:reviewid]}")
-    end
-  end
+  reviewid = params[:reviewid]
+  sessionid = session[:id]
+  likereview(reviewid,sessionid)
+  redirect("reviews/#{reviewid}")
 end
 
 
@@ -272,52 +193,10 @@ post('/reviews/:reviewid/update') do
   rating = params[:rating]
   user = session[:currentuser]
   collaborator = params[:collaborator]
-  empty_check([title,reviewtext,rating], "/reviews/#{params[:reviewid]}/edit")
-  rating = rating.to_i
-  dolog
-  $db.execute("INSERT INTO userlog (userip,time) VALUES (?,?)",request.ip, Time.now.to_i)
-  reviewinfo = $db.execute("SELECT * FROM reviews WHERE reviewid = ?", params[:reviewid])
-  movieinfo = $db.execute("SELECT * FROM movies WHERE movieid = ?", reviewinfo[0]['movieid'])
-  collaborators = $db.execute("SELECT userid FROM users_collab_reviews WHERE reviewid = ?", params[:reviewid])
-  currentcollabs = []
-  p collaborators
-  p "currentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrencollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabsurrentcollabscurrentcollabscurrentcollabs"
-  if collaborators != []
-    collaborators.each do |x|
-      currentcollabs << x['userid']
-    end
-  end
-  if reviewinfo.empty?
-    flash[:notice] = "review does not exist"
-    redirect("/reviews")
-  elsif reviewinfo[0]['user'] != session[:id] && !currentcollabs.include?(session[:id])
-    flash[:notice] = "You are not the owner of this review"
-    redirect("/reviews/#{params[:reviewid]}")
-  else 
-    pop = movieinfo[0]['pop']
-    p pop
-    oldmovierating = movieinfo[0]['movierating']
-    p oldmovierating
-    oldreviewrating = reviewinfo[0]['rating']
-    p oldreviewrating
-    newmovierating = ((((oldmovierating * pop) - oldreviewrating) + rating) / pop)
-    if !collaborator.empty?
-      collab_id = $db.execute("SELECT userid FROM users WHERE username = ?", collaborator).first
-      if collab_id == nil
-        flash[:notice] = "Collab user does not exist"
-        redirect("/reviews/#{params[:reviewid]}/edit")
-      else
-        collab_id = collab_id.values
-      end
-      p collab_id
-      p"fudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohududrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohud"
-      $db.execute('INSERT INTO users_collab_reviews (userid,reviewid) VALUES (?,?)', collab_id, params[:reviewid])
-    end
-    $db.execute('UPDATE reviews SET title = ?, reviewtext = ?, rating = ? WHERE reviewid = ?', title, reviewtext, rating, params[:reviewid])
-    $db.execute('UPDATE movies SET movierating = ? WHERE movieid = ?', newmovierating, movieinfo[0]['movieid'])
-    flash[:notice] = "Updated the review"
-    redirect("/reviews/#{params[:reviewid]}")
-  end
+  sessionid = session[:id]
+  reviewid = params[:reviewid]
+  doreviewupdate(title,reviewtext,rating,user,collaborator,sessionid,reviewid)
+  redirect("/reviews/#{reviewid}")
 end
 
 #USERS
@@ -327,14 +206,9 @@ end
 # @param [String] :username, the user's name
 #
 get('/users/:username') do
-  $db = fetchdb
-  userandreviews = $db.execute("SELECT * FROM users LEFT JOIN reviews ON users.userid = reviews.user WHERE users.username = ?",params[:username])
-  if userandreviews[0] == nil
-    flash[:notice] = "user \"#{params[:username]}\" Does not exist bruh"
-    redirect('/')
-  else
-    slim(:"users/show",locals:{userandreviews:userandreviews})
-  end
+  username = params[:username]
+  userandreviews = usershow(username)
+  slim(:"users/show",locals:{userandreviews:userandreviews})
 end
 
 #USERS; POST
@@ -343,10 +217,9 @@ end
 # @param [String] :username, the user's name
 #
 post('/users/:username/makeadmin') do
-  $db = fetchdb
-  $db.execute("UPDATE users SET perms = 2 WHERE username = ?",params[:username])
-  flash[:notice] = "made #{params[:username]} admin!"
-  redirect("/users/#{params[:username]}")
+  username = params[:username]
+  addadmin(username)
+  redirect("/users/#{username}")
 end
 
 
@@ -381,48 +254,17 @@ post('/register') do
   username = params[:username]
   password = params[:password]
   password_confirm = params[:password_confirm]
-  empty_check([username,password,password_confirm], '/register')
-  $db = fetchdb
-  users_with_same_name = $db.execute("SELECT * FROM users WHERE username = ?", username)
-  if !users_with_same_name.empty?
-    flash[:notice] = "username taken"
-    redirect("/register")
-  end
-  if (password == password_confirm)
-    password_digest = BCrypt::Password.create(password)
-    $db.execute('INSERT INTO "users" (username,pwdigest,perms) VALUES (?,?,?)',username,password_digest,1)
-    redirect('/')
-  else
-    flash[:notice] = "passwords did not match"
-    redirect('/register')
-  end
-  
+  registeruser(username,password,password_confirm)
+  redirect('/')
 end
 
 # Logs in the user
 post('/login') do
   username=params[:username]
   password=params[:password]
-  p password
-  empty_check([username,password], '/login')
-  do_log
-  result = $db.execute("SELECT * FROM users WHERE username = ?",username).first
-  if result == nil
-    flash[:notice] = "No such user"
-    redirect('/login')
-  else
-    pwdigest = result["pwdigest"]
-    id = result["userid"]
-    currentuser = result["username"]
-    perms = result["perms"]
-    if BCrypt::Password.new(pwdigest) == password
-      session[:id] = id
-      session[:currentuser] = currentuser
-      session[:perms] = perms
-      redirect('/')
-    else
-      flash[:notice] = "fel lösen"
-      redirect('/login')
-    end
-  end
+  result = dologin(username,password)
+  session[:id] = result[0]
+  session[:currentuser] = result[1]
+  session[:perms] = result[2]
+  redirect('/')
 end
