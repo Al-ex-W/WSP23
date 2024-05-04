@@ -2,6 +2,7 @@ h2 edit review "#{selectedreview[0]['title']}"
 form action="update" method="POST"
     input type="text" name="title" placeholder="Your reviewtitle here" value="#{selectedreview[0]['title']}"
     input type="text" name="reviewtext" placeholder="write here" value="#{selectedreview[0]['reviewtext']}"
+    input type="text" name="collaborator" placeholder="add collaborator here"
     - for i in 1..5
         input type="radio" name="rating" value="#{i}"
         label for="#{i}" #{i} Stars

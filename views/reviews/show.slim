@@ -4,10 +4,15 @@ h3 = selectedreview[0]['title']
 - if session[:perms] == 2
     form action="/reviews/#{selectedreview[0]['reviewid']}/delete" method="POST"
       input type="submit" value="Delete Review"
-- if session[:id] == selectedreview[0]['user']
+- if session[:id] == selectedreview[0]['user'] || collaborators.include?(session[:id])
     a href="/reviews/#{selectedreview[0]['reviewid']}/edit" Edit review
 br
 a href="/users/#{selectedreview[0]['username']}" by: #{selectedreview[0]['username']}
+- if !collab_names.empty?
+    p Collaborators:
+- collab_names.each do |current_user|
+    a href="/users/#{current_user}" #{current_user}
+    br
 p = "likes: #{selectedreview[0]['likes']}"
 p = selectedreview[0]['reviewtext']
 p = "Och ratingen: #{selectedreview[0]['rating']} av 5!"

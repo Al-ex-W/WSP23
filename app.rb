@@ -150,9 +150,26 @@ end
 get('/reviews/:reviewid') do
   db = fetchdb
   $selectedreview = db.execute("SELECT * FROM reviews INNER JOIN users ON reviews.user = users.userid WHERE reviewid = ?", params[:reviewid])
+  collaborators = db.execute("SELECT userid FROM users_collab_reviews WHERE reviewid= ?", params[:reviewid])
+  collab_names =[]
+  currentcollabs = []
+  if collaborators != []
+      collaborators.each do |current_user|
+        collab_names << db.execute("SELECT username FROM users WHERE userid = ?",current_user['userid']).first['username']
+        p collab_names
+      end
+      p collaborators
+      collaborators.each do |x|
+        currentcollabs << x['userid']
+      end
+  else
+      currentcollabs = []
+  end
   review_check
   p "userns id e: #{$selectedreview}"
-  slim(:"reviews/show",locals:{selectedreview:$selectedreview})
+  p currentcollabs
+  p collab_names
+  slim(:"reviews/show",locals:{selectedreview:$selectedreview, collaborators:currentcollabs, collab_names:collab_names})
 end
 
 #Displays edit page for a review
@@ -161,8 +178,17 @@ end
 get('/reviews/:reviewid/edit') do
   db = fetchdb
   selectedreview = db.execute("SELECT * FROM reviews WHERE reviewid = ?", params[:reviewid])
+  collaborators = db.execute("SELECT userid FROM users_collab_reviews WHERE reviewid = ?", params[:reviewid])
+  currentcollabs = []
+  p collaborators
+  p "PDJFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄFPIDJFPÄIDHJFOIÄHÄ"
+  if collaborators != nil
+    collaborators.each do |x|
+      currentcollabs << x['userid']
+    end
+  end
   review_check
-  if selectedreview[0]['user'] != session[:id]
+  if selectedreview[0]['user'] != session[:id] && !currentcollabs.include?(session[:id])
     flash[:notice] = "You are not owner of review with id #{params[:reviewid]}. are you? log in to correct account first"
     redirect("/reviews/#{params[:reviewid]}")
   end
@@ -179,6 +205,7 @@ post('/reviews/:reviewid/delete') do
     db = fetchdb
     db.execute('DELETE FROM reviews WHERE reviewid = ?',params[:reviewid])
     db.execute('DELETE FROM users_like_reviews WHERE reviewid = ?',params[:reviewid])
+    db.execute('DELETE FROM users_collab_reviews WHERE reviewid = ?',params[:reviewid])
     flash[:notice] = "deleted review with id #{params[:reviewid]}"
     redirect('/reviews')
 end
@@ -199,7 +226,7 @@ post('/reviews/:movieid') do
   empty_check([title,reviewtext,movieid,rating,user], "/reviews/#{movieid}/new")
   db = fetchdb
   log = db.execute("SELECT * FROM userlog WHERE userip = ? AND time > ?",request.ip, (Time.now.to_i - 300))
-  if log.count >= 5 && session[:perms] != 2
+  if log.count >= 544 && session[:perms] != 2
     flash[:notice] = "too many review attempts"
     redirect('/')
   else
@@ -249,9 +276,11 @@ end
 post('/reviews/:reviewid/update') do
   title = params[:title]
   reviewtext = params[:reviewtext]
-  rating = params[:rating].to_i
+  rating = params[:rating]
   user = session[:currentuser]
-  empty_check([title,reviewtext,rating,user], '/reviews')
+  collaborator = params[:collaborator]
+  empty_check([title,reviewtext,rating], "/reviews/#{params[:reviewid]}/edit")
+  rating = rating.to_i
   db = fetchdb
   log = db.execute("SELECT * FROM userlog WHERE userip = ? AND time > ?",request.ip, (Time.now.to_i - 300))
   if log.count >= 60 && session[:perms] != 2
@@ -261,10 +290,19 @@ post('/reviews/:reviewid/update') do
     db.execute("INSERT INTO userlog (userip,time) VALUES (?,?)",request.ip, Time.now.to_i)
     reviewinfo = db.execute("SELECT * FROM reviews WHERE reviewid = ?", params[:reviewid])
     movieinfo = db.execute("SELECT * FROM movies WHERE movieid = ?", reviewinfo[0]['movieid'])
+    collaborators = db.execute("SELECT userid FROM users_collab_reviews WHERE reviewid = ?", params[:reviewid])
+    currentcollabs = []
+    p collaborators
+    p "currentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabscurrentcollabs"
+    if collaborators != []
+      collaborators.each do |x|
+        currentcollabs << x['userid']
+      end
+    end
     if reviewinfo.empty?
       flash[:notice] = "review does not exist"
       redirect("/reviews")
-    elsif reviewinfo[0]['user'] != session[:id]
+    elsif reviewinfo[0]['user'] != session[:id] && !currentcollabs.include?(session[:id])
       flash[:notice] = "You are not the owner of this review"
       redirect("/reviews/#{params[:reviewid]}")
     else 
@@ -275,6 +313,18 @@ post('/reviews/:reviewid/update') do
       oldreviewrating = reviewinfo[0]['rating']
       p oldreviewrating
       newmovierating = ((((oldmovierating * pop) - oldreviewrating) + rating) / pop)
+      if !collaborator.empty?
+        collab_id = db.execute("SELECT userid FROM users WHERE username = ?", collaborator).first
+        if collab_id == nil
+          flash[:notice] = "Collab user does not exist"
+          redirect("/reviews/#{params[:reviewid]}/edit")
+        else
+          collab_id = collab_id.values
+        end
+        p collab_id
+        p "fudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohudfudrhfohud"
+        db.execute('INSERT INTO users_collab_reviews (userid,reviewid) VALUES (?,?)', collab_id, params[:reviewid])
+      end
       db.execute('UPDATE reviews SET title = ?, reviewtext = ?, rating = ? WHERE reviewid = ?', title, reviewtext, rating, params[:reviewid])
       db.execute('UPDATE movies SET movierating = ? WHERE movieid = ?', newmovierating, movieinfo[0]['movieid'])
       flash[:notice] = "Updated the review"
@@ -370,7 +420,7 @@ post('/login') do
   empty_check([username,password], '/login')
   db = fetchdb
   log = db.execute("SELECT * FROM userlog WHERE userip = ? AND time > ?",request.ip, (Time.now.to_i - 300))
-  if log.count >= 5
+  if log.count >= 6666
     flash[:notice] = "too many login attempts"
     redirect('/login')
   else
