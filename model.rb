@@ -1,9 +1,9 @@
 module Model 
     
     def fetchdb
-        db = SQLite3::Database.new("db/db.db")
-        db.results_as_hash = true
-        return db
+        $db = SQLite3::Database.new("db/db.db")
+        $db.results_as_hash = true
+        return $db
     end
 
     def is_checked(i)
@@ -43,5 +43,16 @@ module Model
                 redirect(link)
             end
         end
+    end
+
+    def do_log
+        $db = fetchdb
+        log = $db.execute("SELECT * FROM userlog WHERE userip = ? AND time > ?",request.ip, (Time.now.to_i - 300))
+        if log.count >= 6 && session[:perms] != 2
+          $db.execute("INSERT INTO userlog (userip,time) VALUES (?,?)",request.ip, Time.now.to_i)  
+          flash[:notice] = "too many website actions, wait some time!"
+          redirect('/')
+        end
+        $db.execute("INSERT INTO userlog (userip,time) VALUES (?,?)",request.ip, Time.now.to_i)
     end
 end
