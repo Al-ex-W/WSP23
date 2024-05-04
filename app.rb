@@ -22,6 +22,26 @@ hur mycket av min app.rb ska vara i model
 Beforeblock post?
 many to many 2 ggr"
 
+before do
+  p "request path info är #{request.path_info}" 
+    if request.request_method == 'GET'
+      if [%r{^/movies/new$}, %r{^/movies/([^/]+)/edit$}].any? { |path| request.path_info.match?(path) }
+        admin_check("/")
+      end
+      if [%r{^/reviews/([^/]+)/new$}].any? { |path| request.path_info.match?(path) }
+        user_check
+      end
+    elsif request.request_method == 'POST'
+      if [%r{^/movies/([^/]+)/update$}, %r{^/movies$}, %r{^/reviews/([^/]+)/delete$}, %r{^/users/([^/]+)/makeadmin$}].any? { |path| request.path_info.match?(path) }
+        admin_check("/")
+      end
+      if [%r{^/reviews/([^/]+)$}, %r{^/reviews/([^/]+)/like$}, %r{^/reviews/([^/]+)/update$}].any? { |path| request.path_info.match?(path) }
+        user_check
+      end
+    end
+
+end
+
 #MOVIES
 
 # display landing page
@@ -40,12 +60,6 @@ get('/movies') do
   result = db.execute("SELECT * FROM movies")
   # p result
   slim(:"movies/index",locals:{movies:result})
-end
-
-# before displaying page for adding a movie
-# @see Model#admin_check
-before('/movies/new') do
-  admin_check("/")
 end
 
 # Displays page for adding a movie
@@ -68,12 +82,6 @@ get('/movies/:movieid') do
   slim(:"movies/show",locals:{selectedmovie:selectedmovie})
 end
 
-# Before displaying edit page for a movie
-# @param [Integer] :movieid, the ID of the movie
-#
-before('/movies/:movieid/edit') do
-  admin_check("/")
-end
 
 # displays edit page for a movie
 # @param [Integer] :movieid, the ID of the movie
@@ -91,7 +99,6 @@ end
 # @param [Integer] :movieid, the ID of the movie
 # @see Model#empty_check
 post('/movies/:movieid/update') do 
-    admin_check("/")
     title = params[:title]
     releasedate = params[:releasedate]
     empty_check([title,releasedate], '/movies/:movieid/update')
@@ -105,7 +112,6 @@ end
 # Adds new movie
 #
 post('/movies') do 
-    admin_check("/")
     title = params[:title]
     releasedate = params[:releasedate]
     pop = 0
@@ -127,16 +133,6 @@ get('/reviews') do
   slim(:"reviews/index",locals:{reviewsandusers:reviewsandusers})
 end
 
-# Before displaying page for writing a review
-# @param [Integer] :movieid, the ID of the reviewed movie
-#
-before('/reviews/:movieid/new') do
-  if session[:perms] == nil
-    flash[:notice] = "You must be logged in to do that"
-    redirect('/login')
-  end
-end
-
 # Displays page for writing a review
 # @param [Integer] :movieid, the ID of the reviewed movie
 #
@@ -155,25 +151,9 @@ get('/reviews/:reviewid') do
   db = fetchdb
   $selectedreview = db.execute("SELECT * FROM reviews INNER JOIN users ON reviews.user = users.userid WHERE reviewid = ?", params[:reviewid])
   review_check
-  p "userns id e: #{selectedreview}"
-  slim(:"reviews/show",locals:{selectedreview:selectedreview})
+  p "userns id e: #{$selectedreview}"
+  slim(:"reviews/show",locals:{selectedreview:$selectedreview})
 end
-
-
-#before displatying edit page for a review
-#
-# @param [Integer] :reviewid, the ID of the review
-#
-before('/reviews/:reviewid/edit') do
-  db = fetchdb
-  $selectedreview = db.execute("SELECT * FROM reviews WHERE reviewid = ?", params[:reviewid])
-  review_check
-  if selectedreview[0]['user'] != session[:id]
-    flash[:notice] = "You are not owner of review with id #{params[:reviewid]}. are you? log in to correct account first"
-    redirect("/reviews/#{params[:reviewid]}")
-  end
-end
-
 
 #Displays edit page for a review
 # @param [Integer] :reviewid, the ID of the review
@@ -181,8 +161,11 @@ end
 get('/reviews/:reviewid/edit') do
   db = fetchdb
   selectedreview = db.execute("SELECT * FROM reviews WHERE reviewid = ?", params[:reviewid])
-  p selectedreview
-  p "här va det !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!v"
+  review_check
+  if selectedreview[0]['user'] != session[:id]
+    flash[:notice] = "You are not owner of review with id #{params[:reviewid]}. are you? log in to correct account first"
+    redirect("/reviews/#{params[:reviewid]}")
+  end
   slim(:"reviews/edit",locals:{selectedreview:selectedreview})
 end
 
@@ -192,8 +175,7 @@ end
 # Deletes a review
 # @param [Integer] :reviewid, the ID of the review
 #
-post('/reviews/:reviewid/delete') do
-    admin_check("/reviews/#{params[:reviewid]}")  
+post('/reviews/:reviewid/delete') do 
     db = fetchdb
     db.execute('DELETE FROM reviews WHERE reviewid = ?',params[:reviewid])
     db.execute('DELETE FROM users_like_reviews WHERE reviewid = ?',params[:reviewid])
@@ -207,7 +189,6 @@ end
 # @param [Integer] :movieid, the ID of the reviewed movie
 # @see Model#empty_check
 post('/reviews/:movieid') do
-  user_check
   movieid = params[:movieid].to_i
   title = params[:title]
   reviewtext = params[:reviewtext]
@@ -241,7 +222,7 @@ end
 # @param [Integer] :reviewid, the ID of the liked review
 #
 post('/reviews/:reviewid/like') do
-  user_check
+
   p "hejhej test test den ska likea nu"
   db = fetchdb
   likelist = db.execute("SELECT * FROM users_like_reviews right JOIN reviews ON users_like_reviews.reviewid = reviews.reviewid WHERE reviews.reviewid = ?", params[:reviewid])
@@ -266,7 +247,6 @@ end
 # @param [Integer] :reviewid, the ID of the review
 #
 post('/reviews/:reviewid/update') do
-  user_check
   title = params[:title]
   reviewtext = params[:reviewtext]
   rating = params[:rating].to_i
@@ -326,7 +306,6 @@ end
 # @param [String] :username, the user's name
 #
 post('/users/:username/makeadmin') do
-  admin_check("/users/#{params[:username]}")
   db = fetchdb
   db.execute("UPDATE users SET perms = 2 WHERE username = ?",params[:username])
   flash[:notice] = "made #{params[:username]} admin!"
